@@ -3,6 +3,7 @@
 namespace App;
 
 use Illuminate\Notifications\Notifiable;
+
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
 class User extends Authenticatable
@@ -27,7 +28,7 @@ class User extends Authenticatable
         'password', 'remember_token',
     ];
     
-        public function microposts()
+    public function microposts()
     {
         return $this->hasMany(Micropost::class);
     }
@@ -47,7 +48,7 @@ class User extends Authenticatable
         // 既にフォローしているかの確認
         $exist = $this->is_following($userId);
         // 自分自身ではないかの確認
-        $its_me = $this->id == $userId; 
+        $its_me = $this->id == $userId;
 
         if ($exist || $its_me) {
             // 既にフォローしていれば何もしない
@@ -86,4 +87,47 @@ class User extends Authenticatable
         $follow_user_ids[] = $this->id;
         return Micropost::whereIn('user_id', $follow_user_ids);
     }
+
+
+
+    public function favorites()
+    {
+        return $this->belongsToMany(Micropost::class, 'user_favorite', 'user_id', 'micropost_id')->withTimestamps();
+    }
+
+    public function favorite($micropostId)
+    {
+        $exist = $this->is_favorites($micropostId); 
+
+        if ($exist) {
+            return false;
+        } else {
+            $this->favorites()->attach($micropostId);
+            return true;
+        }
+    }
+
+    public function unfavorite($micropostId)
+    {
+        $exist = $this->is_favorites($micropostId);
+
+        if ($exist) {
+            $this->favorites()->detach($micropostId);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public function is_favorites($micropostId) {
+        return $this->favorites()->where('micropost_id', $micropostId)->exists();
+    }
+
+
+    public function favo_microposts()
+    {
+        $favorite_user_ids = $this->favorites()-> pluck('microposts.id')->toArray();
+        return Micropost::whereIn('micropost_id', $favorite_user_ids);
+    }
+
 }
